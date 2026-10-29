@@ -1,0 +1,2 @@
+Modalities,Classification Model,Test Accuracy,Test Macro Precision,Test Macro Recall,Test Macro F1,Regression Model,Regression Test MAE,Regression Test RMSE,Regression Test R2,CV Accuracy Mean,CV Accuracy Std,CV Macro F1 Mean,CV Macro F1 Std
+FTIR,Logistic Regression,1.0,1.0,1.0,1.0,Random Forest Regressor,0.011761904761904737,0.030245031075565188,0.9999012701908957,1.0,0.0,1.0,0.0

@@ -32,3 +32,12 @@ build/
 
 # Logs
 *.log
+
+# Environment variables & secrets
+.env
+*.env
+
+# SQLite databases and persistent app data
+*.db
+*.sqlite
+backend/data/

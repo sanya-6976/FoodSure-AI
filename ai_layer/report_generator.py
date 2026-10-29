@@ -59,11 +59,20 @@ def generate_report(
     if len(modalities) != len(set(modalities)):
         raise ReportValidationError("'modalities_used' must not contain duplicates.")
 
-    required_analyst_fields = (
-        "summary",
-        "interpretation",
-        "recommended_verification",
-    )
+    # Accept both old schema (summary/interpretation) and new 8-section schema
+    _new_schema = "executive_summary" in analyst_result
+    if _new_schema:
+        required_analyst_fields = (
+            "executive_summary",
+            "result_interpretation",
+            "scientific_explanation",
+        )
+    else:
+        required_analyst_fields = (
+            "summary",
+            "interpretation",
+            "recommended_verification",
+        )
     for field in required_analyst_fields:
         if (
             not isinstance(analyst_result.get(field), str)
@@ -73,10 +82,13 @@ def generate_report(
                 f"Analyst result requires a non-empty string field '{field}'."
             )
 
-    supporting_evidence = _validate_text_list(
-        analyst_result.get("supporting_evidence", []),
-        "analyst_result.supporting_evidence",
-    )
+    # In new schema, supporting_evidence is derived from evidence_and_reasoning
+    if _new_schema:
+        ear = analyst_result.get("evidence_and_reasoning", [])
+        raw_supp = [item.get("evidence", "") for item in ear if isinstance(item, dict)]
+    else:
+        raw_supp = analyst_result.get("supporting_evidence", [])
+    supporting_evidence = _validate_text_list(raw_supp, "analyst_result.supporting_evidence")
     analysis_mode = analyst_result.get("analysis_mode", "unspecified")
     if not isinstance(analysis_mode, str) or not analysis_mode.strip():
         raise ReportValidationError("'analysis_mode' must be a non-empty string.")
@@ -100,8 +112,8 @@ def generate_report(
         "modalities_used": modalities.copy(),
         "model_result": model_result.copy(),
         "analysis": {
-            "summary": analyst_result["summary"],
-            "interpretation": analyst_result["interpretation"],
+            "summary": analyst_result.get("executive_summary", analyst_result.get("summary", "")),
+            "interpretation": analyst_result.get("result_interpretation", analyst_result.get("interpretation", "")),
             "supporting_evidence": supporting_evidence,
             "analysis_mode": analysis_mode,
         },
@@ -114,9 +126,11 @@ def generate_report(
             analyst_result.get("limitations", []),
             "analyst_result.limitations",
         ),
-        "recommended_verification": analyst_result[
-            "recommended_verification"
-        ],
+        "recommended_verification": (
+            analyst_result.get("recommended_next_steps", [""])[0]
+            if _new_schema and analyst_result.get("recommended_next_steps")
+            else analyst_result.get("recommended_verification", "Verify with laboratory.")
+        ),
         "disclaimer": (
             "FoodSure AI is a research prototype for AI-assisted screening. "
             "Its outputs are model estimates, not laboratory-confirmed findings "

@@ -41,9 +41,11 @@ _PREDICTION_FIELDS = {
     "probabilities",
 }
 _ANALYSIS_TEXT_FIELDS = (
-    "summary",
-    "interpretation",
-    "recommended_verification",
+    "executive_summary",
+    "result_interpretation",
+    "scientific_explanation",
+    "confidence_and_uncertainty",
+    "practical_implications",
 )
 
 
@@ -411,7 +413,7 @@ def run_pipeline(
     analysis_candidate = analyze(evidence_payload, use_llm=use_llm)
     if not isinstance(analysis_candidate, dict):
         raise PipelineOutputError("Analyst output must be a dictionary.")
-    if analysis_candidate.get("analysis_mode") == "llm":
+    if analysis_candidate.get("analysis_mode") in ("llm", "gemini_llm"):
         analysis = deterministic_analysis(evidence_payload)
         analysis["provider_note"] = (
             "LLM narrative was excluded because its factual claims were not "
@@ -428,20 +430,18 @@ def run_pipeline(
             raise PipelineOutputError(
                 f"Analyst output requires string field '{field}'."
             )
-    analyst_model_result = analysis.get("model_result")
-    if not isinstance(analyst_model_result, dict):
-        raise PipelineOutputError("Analyst output requires a model_result object.")
-    if analyst_model_result.get("prediction") != classification["prediction"]:
-        raise PipelineOutputError(
-            "Analyst output does not preserve the actual classifier label."
-        )
-    for field in ("supporting_evidence", "uncertainty_notes", "limitations"):
+    # Validate list fields in new 8-section schema
+    for field in ("recommended_next_steps", "limitations"):
         if not isinstance(analysis.get(field), list) or not all(
             isinstance(item, str) for item in analysis[field]
         ):
             raise PipelineOutputError(
                 f"Analyst output field '{field}' must be a list of strings."
             )
+    # Validate evidence_and_reasoning list
+    ear = analysis.get("evidence_and_reasoning", [])
+    if not isinstance(ear, list):
+        raise PipelineOutputError("Analyst output 'evidence_and_reasoning' must be a list.")
 
     report = generate_report(
         evidence_payload=evidence_payload,
