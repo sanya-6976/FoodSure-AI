@@ -41,3 +41,11 @@ build/
 *.db
 *.sqlite
 backend/data/
+
+# Node.js and Web Frontend
+node_modules/
+web/node_modules/
+web/dist/
+dist/
+.vite/
+
